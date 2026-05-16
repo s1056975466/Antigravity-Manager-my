@@ -304,6 +304,34 @@ pub fn transform_openai_request(
                                     // 这会与 v3.3.16 的 thinkingConfig 逻辑冲突，留待后续版本实现
                                     tracing::debug!("[OpenAI-Request] Skipping audio_url (not yet implemented in v3.3.16)");
                                 }
+                                // [新增] 处理客户端传来的本地文件 (如 PDF 文档)
+                                OpenAIContentBlock::File { file } => {
+                                    let url_data = &file.file_data;
+                                    // 解析类似 "data:application/pdf;base64,JVBER..." 的数据URI
+                                    if url_data.starts_with("data:") {
+                                        if let Some(pos) = url_data.find(',') {
+                                            let mime_part = &url_data[5..pos];
+                                            let mime_type = mime_part.split(';').next().unwrap_or("application/pdf");
+                                            let data = &url_data[pos + 1..];
+                                            
+                                            parts.push(json!({
+                                                "inlineData": { "mimeType": mime_type, "data": data }
+                                            }));
+                                            tracing::debug!("[OpenAI-Request] Parsed file data: {} ({} bytes)", file.filename.as_deref().unwrap_or("unknown"), data.len());
+                                        }
+                                    } else {
+                                        // 兼容没有前缀的纯 base64 数据
+                                        let mime_type = if let Some(name) = &file.filename {
+                                            if name.to_lowercase().ends_with(".pdf") { "application/pdf" }
+                                            else { "text/plain" }
+                                        } else {
+                                            "application/octet-stream"
+                                        };
+                                        parts.push(json!({
+                                            "inlineData": { "mimeType": mime_type, "data": url_data }
+                                        }));
+                                    }
+                                }
                             }
                         }
                     }
