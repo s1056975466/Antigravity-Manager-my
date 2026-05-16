@@ -56,7 +56,6 @@ pub struct ThinkingConfig {
     pub effort: Option<String>, // "low", "high", or "max"
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseFormat {
     pub r#type: String,
@@ -78,6 +77,16 @@ pub enum OpenAIContentBlock {
     ImageUrl { image_url: OpenAIImageUrl },
     #[serde(rename = "audio_url")]
     AudioUrl { audio_url: AudioUrlContent },
+    // [新增] 兼容 Cherry Studio 等客户端发送的文件结构
+    #[serde(rename = "file")]
+    File { file: OpenAIFileContent },
+}
+
+// [新增] 用于承载 Cherry Studio 的文件 JSON 结构
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OpenAIFileContent {
+    pub filename: Option<String>,
+    pub file_data: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
